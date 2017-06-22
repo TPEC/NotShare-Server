@@ -1,7 +1,11 @@
 package network;
 
+import database.DatabaseHelper;
+
 import java.io.*;
 import java.net.Socket;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 /**
  * Created by Irene on 2017/6/22.
@@ -12,9 +16,12 @@ public class TServerProcessor implements Runnable {
     Thread t;
     boolean flag;
     String str="";
+    boolean fileFlag=false;
     String fs="";
     long fsize;
     String userName="", emailAddress="", password="";
+    int id;
+    ResultSet rs;
     OutputStream os=null;
     InputStream is=null;
     FileOutputStream fos=null;
@@ -94,55 +101,140 @@ public class TServerProcessor implements Runnable {
     @Override
     public void run() {
         byte[] buf=new byte[BUFFER_SIZE];
+        long writeLength=0;
         while (flag){
             try {
                 int k=is.read(buf);
                 if(k>0){
-                    if(buf[0]=='D' && buf[1]=='N' && buf[2]=='L'){
-                        if(fos==null){
-                            String fileName="";
-                            for(int i=255;i<buf.length;i++){
-                                if(buf[i]!=0)
-                                    fileName+=(char)buf[i];
+                    String a="";
+                    a+=(char)buf[0];
+                    a+=(char)buf[1];
+                    a+=(char)buf[2];
+                    if(fileFlag==false) {
+                        switch (a) {
+                            case "DNL"://下载
+                                if (fos == null) {
+                                    fileFlag = true;
+                                    String fileName = "";
+                                    for (int i = 255; i < buf.length; i++) {
+                                        if (buf[i] != 0)
+                                            fileName += (char) buf[i];
+                                        else
+                                            break;
+                                    }
+                                    File file = new File(fileName);
+                                    System.out.println(file.getAbsolutePath());
+                                    fos = new FileOutputStream(fileName);
+                                    for (int i = 3; i < buf.length; i++) {
+                                        if (buf[i] != 0)
+                                            fs += buf[i];
+                                        else
+                                            break;
+                                    }
+                                    fsize = Integer.valueOf(fs);
+                                }
+                                break;
+                            case "RGT"://注册
+                                userName = "";
+                                for (int i = 4; i < 36; i++) {//用户名，最多32个字节
+                                    if (buf[i] != 0)
+                                        userName += buf[i];
+                                    else
+                                        break;
+                                }
+                                password = "";
+                                for (int i = 36; i < 66; i++) {//email，最多32个字节
+                                    if (buf[i] != 0)
+                                        password += buf[i];
+                                    else
+                                        break;
+                                }
+                                if (DatabaseHelper.getInstance().checkRegister(userName, password) == -1)
+                                    send(new String("RGF").getBytes(), 3);
                                 else
-                                    break;
-                            }
-                            File file=new File(fileName);
-                            System.out.println(file.getAbsolutePath());
-                            fos=new FileOutputStream(fileName);
-                            for(int i=3;i<buf.length;i++){
-                                if(buf[i]!=0)
-                                    fs+=buf[i];
-                                else
-                                    break;
-                            }
-                            fsize=Integer.valueOf(fs);
-                        }else {
+                                    send(new String("RGS").getBytes(), 3);
+                                break;
+                            case "SGI"://登录
+                                userName = "";
+                                for (int i = 4; i < 36; i++) {//用户名，最多32个字节
+                                    if (buf[i] != 0)
+                                        userName += buf[i];
+                                    else
+                                        break;
+                                }
+                                password = "";
+                                for (int i = 36; i < 66; i++) {//email，最多32个字节
+                                    if (buf[i] != 0)
+                                        password += buf[i];
+                                    else
+                                        break;
+                                }
+                                rs = DatabaseHelper.getInstance().checkLogin(userName, password);
+                                if (rs == null)
+                                    send(new String("SIF").getBytes(), 3);
+                                else {
+                                    id = rs.getInt("id");
+                                    send(new String("SIS").getBytes(), 3);
+                                }
+                                break;
+                            case "FAP"://喜欢人
+                                int pid2;
+                                String pid2str="";
+                                for (int i = 3; i < buf.length; i++) {
+                                    if (buf[i] != 0)
+                                        pid2str += buf[i];
+                                    else
+                                        break;
+                                }
+                                pid2 = Integer.valueOf(pid2str);
+                                DatabaseHelper.getInstance().follow(id,pid2,0);
+                                break;
+                            case "FAD"://喜欢doc
+                                int did2;
+                                String did2str="";
+                                for (int i = 3; i < buf.length; i++) {
+                                    if (buf[i] != 0)
+                                        did2str += buf[i];
+                                    else
+                                        break;
+                                }
+                                did2 = Integer.valueOf(did2str);
+                                DatabaseHelper.getInstance().follow(id,did2,1);
+                                break;
+                            case "FAN"://喜欢note
+                                int nid2;
+                                String nid2str="";
+                                for (int i = 3; i < buf.length; i++) {
+                                    if (buf[i] != 0)
+                                        nid2str += buf[i];
+                                    else
+                                        break;
+                                }
+                                nid2 = Integer.valueOf(nid2str);
+                                DatabaseHelper.getInstance().follow(id,nid2,2);
+                                break;
+                            case "SHA":
+
+                                break;
+                            case "SHP":
+
+                                break;
+                        }
+                    }else {
+                        if(writeLength<fsize){
                             fos.write(buf,0,k);
+                            writeLength+=k;
                             fos.flush();
-                        }
-                    }else if(buf[0]=='R' && buf[1]=='G' && buf[2]=='T'){
-                        for(int i=4;i<36;i++){//用户名，最多32个字节
-                            if(buf[i]!=0)
-                                userName+=buf[i];
-                            else
-                                break;
-                        }
-                        for(int i=36;i<66;i++){//email，最多32个字节
-                            if(buf[i]!=0)
-                                emailAddress+=buf[i];
-                            else
-                                break;
-                        }
-                        for(int i=66;i<98;i++){//密码，最多32个字节
-                            if(buf[i]!=0)
-                                password+=buf[i];
-                            else
-                                break;
+                        }else {
+                            fos.close();
+                            fos=null;
+                            fileFlag=false;
                         }
                     }
                 }
             } catch (IOException e) {
+                e.printStackTrace();
+            } catch (SQLException e) {
                 e.printStackTrace();
             }
         }
