@@ -126,9 +126,17 @@ public class TServerProcessor implements Runnable {
                                     fsize = Integer.valueOf(fs);
                                 }
                                 break;
-                            case "GET":
-                                int id;
-                                String docPath=DatabaseHelper.getInstance().getDocPath(id);
+                            case "GET"://客户端要求获取getID文档
+                                int getID;
+                                String gid="";
+                                for(int i=4;i<BUFFER_SIZE;i++){
+                                    if(buf[i]!=0)
+                                        gid+=buf[i];
+                                    else
+                                        break;
+                                }
+                                getID=Integer.valueOf(gid);
+                                String docPath=DatabaseHelper.getInstance().getDocPath(getID);
                                 sendFile(docPath);
                             case "RGT"://注册
                                 userName = "";
