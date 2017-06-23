@@ -92,6 +92,30 @@ public class DatabaseHelper {
         return null;
     }
 
+    public String getDocPath(int id){
+        ResultSet rs=jdbch.executeQuery(concat_s("*","document","id="+String.valueOf(id)));
+        try {
+            if(rs.next()){
+                return rs.getString("filepath");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public String getNotePath(int id){
+        ResultSet rs=jdbch.executeQuery(concat_s("*","note","id="+String.valueOf(id)));
+        try {
+            if(rs.next()){
+                return rs.getString("filepath");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public boolean uploadDoc(String title,int ownerid,String filePath){
         String sql="\'"+title+"\',"+String.valueOf(ownerid)+",\'"+filePath+"\'";
         jdbch.executeUpdate(concat_i("document","title,ownerid,filepath",sql));
