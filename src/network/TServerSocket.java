@@ -9,7 +9,7 @@ import java.net.Socket;
  */
 public class TServerSocket implements Runnable {
     ServerSocket ss=null;
-
+    //TServerProcessor[] tsp;
     boolean flag=false;
     Thread th=null;
 
@@ -21,6 +21,7 @@ public class TServerSocket implements Runnable {
         }
         th=new Thread(this);
         flag=true;
+        //tsp=new TServerProcessor[16];
         th.start();
     }
 
