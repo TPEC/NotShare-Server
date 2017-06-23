@@ -48,27 +48,19 @@ public class TServerProcessor implements Runnable {
         return 0;
     }
 
-    public long sendFile(String path){
+    public long sendFile(String path){//put
+        String str="GET0";
         long fs=0;
         try {
-            File file=new File(path);
-            if(file.exists() && file.isFile()) {
-                byte[] fileN=new byte[BUFFER_SIZE];
-                String fn=file.getName();
-                fileN[0]='D';//协议头
-                fileN[1]='N';
-                fileN[2]='L';
-                str=String.valueOf(file.length());
-                for(int i=0;i<fileN.length;i++){//文件长度
-                    if(i<str.length())
-                        fileN[3+i]= (byte) str.charAt(i);
-                    else
-                        fileN[i]=0;
-                }
-                for(int i=255;i<fn.length();i++) {//文件名字，从255开始
-                    fileN[i]=(byte)fn.charAt(i-255);
-                }
-                send(fileN,BUFFER_SIZE);
+            File file = new File(path);
+            if (file.exists() && file.isFile()) {
+                str += String.valueOf(file.length());//4开始，文件长度
+                for (int i = str.length(); i < 255; i++)
+                    str += '0';
+                str += file.getName();//255开始，文件名字
+                for (int i = str.length(); i < BUFFER_SIZE; i++)
+                    str += '0';
+                send(str.getBytes(), BUFFER_SIZE);
                 FileInputStream fis=new FileInputStream(file);
                 byte[] buf = new byte[BUFFER_SIZE];
                 int rs;
@@ -86,7 +78,7 @@ public class TServerProcessor implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }finally {
-            return fs;
+            return 0;
         }
     }
 
@@ -112,7 +104,7 @@ public class TServerProcessor implements Runnable {
                     a+=(char)buf[2];
                     if(fileFlag==false) {
                         switch (a) {
-                            case "DNL"://下载
+                            case "PUT"://服务器端的接受
                                 if (fos == null) {
                                     fileFlag = true;
                                     String fileName = "";
@@ -125,7 +117,7 @@ public class TServerProcessor implements Runnable {
                                     File file = new File(fileName);
                                     System.out.println(file.getAbsolutePath());
                                     fos = new FileOutputStream(fileName);
-                                    for (int i = 3; i < buf.length; i++) {
+                                    for (int i = 4; i < buf.length; i++) {
                                         if (buf[i] != 0)
                                             fs += buf[i];
                                         else
@@ -134,6 +126,10 @@ public class TServerProcessor implements Runnable {
                                     fsize = Integer.valueOf(fs);
                                 }
                                 break;
+                            case "GET":
+                                int id;
+                                String docPath=DatabaseHelper.getInstance().getDocPath(id);
+                                sendFile(docPath);
                             case "RGT"://注册
                                 userName = "";
                                 for (int i = 4; i < 36; i++) {//用户名，最多32个字节
@@ -180,7 +176,7 @@ public class TServerProcessor implements Runnable {
                             case "FAP"://喜欢人
                                 int pid2;
                                 String pid2str="";
-                                for (int i = 3; i < buf.length; i++) {
+                                for (int i = 4; i < buf.length; i++) {
                                     if (buf[i] != 0)
                                         pid2str += buf[i];
                                     else
@@ -192,7 +188,7 @@ public class TServerProcessor implements Runnable {
                             case "FAD"://喜欢doc
                                 int did2;
                                 String did2str="";
-                                for (int i = 3; i < buf.length; i++) {
+                                for (int i = 4; i < buf.length; i++) {
                                     if (buf[i] != 0)
                                         did2str += buf[i];
                                     else
@@ -204,7 +200,7 @@ public class TServerProcessor implements Runnable {
                             case "FAN"://喜欢note
                                 int nid2;
                                 String nid2str="";
-                                for (int i = 3; i < buf.length; i++) {
+                                for (int i = 4; i < buf.length; i++) {
                                     if (buf[i] != 0)
                                         nid2str += buf[i];
                                     else
