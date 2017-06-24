@@ -145,6 +145,12 @@ public class DatabaseHelper {
         return null;
     }
 
+    public boolean createShare(int uid,short dntype,int dnid,int sharetype){
+        String sql=String.valueOf(dntype)+","+String.valueOf(dnid)+","+String.valueOf(uid)+","+String.valueOf(sharetype);
+        jdbch.executeUpdate(concat_i("share","dntype,dnid,ownerid,type",sql));
+        return true;
+    }
+
     /**
      *
      * @param id
