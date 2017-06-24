@@ -15,13 +15,9 @@ public class TServerProcessor implements Runnable {
     Socket s;
     Thread t;
     boolean flag;
-    String str="";
     boolean fileFlag=false;
-    String fs="";
     long fsize;
-    String userName="", emailAddress="", password="";
     int id;
-    ResultSet rs;
     OutputStream os=null;
     InputStream is=null;
     FileOutputStream fos=null;
@@ -105,6 +101,9 @@ public class TServerProcessor implements Runnable {
                     if(fileFlag==false) {
                         switch (a) {
                             case "PUT"://服务器端的接受
+                                String fs="", type="", ndID="";
+                                int noteDocID = 0;
+                                type+=(char)buf[3];
                                 if (fos == null) {
                                     fileFlag = true;
                                     String fileName = "";
@@ -113,6 +112,15 @@ public class TServerProcessor implements Runnable {
                                             fileName += (char) buf[i];
                                         else
                                             break;
+                                    }
+                                    if(type=="2"){
+                                        for(int i=500; i<buf.length;i++){
+                                            if(buf[i]!=0)
+                                                ndID+=(char)buf[i];
+                                            else
+                                                break;
+                                        }
+                                        noteDocID=Integer.valueOf(ndID);
                                     }
                                     File file = new File(fileName);
                                     System.out.println(file.getAbsolutePath());
@@ -124,6 +132,10 @@ public class TServerProcessor implements Runnable {
                                             break;
                                     }
                                     fsize = Integer.valueOf(fs);
+                                    if(type=="1")
+                                        DatabaseHelper.getInstance().uploadDoc(fileName, id, fileName);
+                                    else if(type=="2")
+                                        DatabaseHelper.getInstance().uploadNote(noteDocID, id, fileName);
                                 }
                                 break;
                             case "GET"://客户端要求获取getID文档
@@ -139,45 +151,113 @@ public class TServerProcessor implements Runnable {
                                 String docPath=DatabaseHelper.getInstance().getDocPath(getID);
                                 sendFile(docPath);
                             case "RGT"://注册
-                                userName = "";
+                                String userNameRegister="", passwordRegister="";
                                 for (int i = 4; i < 36; i++) {//用户名，最多32个字节
                                     if (buf[i] != 0)
-                                        userName += buf[i];
+                                        userNameRegister += buf[i];
                                     else
                                         break;
                                 }
-                                password = "";
                                 for (int i = 36; i < 66; i++) {//email，最多32个字节
                                     if (buf[i] != 0)
-                                        password += buf[i];
+                                        passwordRegister += buf[i];
                                     else
                                         break;
                                 }
-                                if (DatabaseHelper.getInstance().checkRegister(userName, password) == -1)
+                                if (DatabaseHelper.getInstance().checkRegister(userNameRegister, passwordRegister) == -1)
                                     send(new String("RGF").getBytes(), 3);
                                 else
                                     send(new String("RGS").getBytes(), 3);
                                 break;
+                            case "GUI"://获取用户id的信息
+                                int userID;
+                                String uID="";
+                                for(int i=4;i<BUFFER_SIZE;i++){
+                                    if(buf[i]!=0)
+                                        uID+=buf[i];
+                                    else
+                                        break;
+                                }
+                                userID=Integer.valueOf(uID);
+                                ResultSet rsGetUserInfo;
+                                rsGetUserInfo=DatabaseHelper.getInstance().getFollow(userID, 0);
+                                String userInfo="GUI0";
+                                userInfo+=rsGetUserInfo.getString("name");
+                                for(int i=userInfo.length();i<36;i++)
+                                    userInfo+='0';
+                                userInfo+=rsGetUserInfo.getInt("points");
+                                for(int i=userInfo.length();i<BUFFER_SIZE;i++)
+                                    userInfo+='0';
+                                send(userInfo.getBytes(), BUFFER_SIZE);
+                                break;
+                            case "GDI"://获取docID的信息
+                                int docID;
+                                String dID="";
+                                for(int i=4;i<BUFFER_SIZE;i++){
+                                    if(buf[i]!=0)
+                                        dID+=buf[i];
+                                    else
+                                        break;
+                                }
+                                docID=Integer.valueOf(dID);
+                                ResultSet rsGetDocInfo;
+                                rsGetDocInfo=DatabaseHelper.getInstance().getFollow(docID, 1);
+                                String docInfo="GDI0";
+                                docInfo+=rsGetDocInfo.getInt("id");
+                                for(int i=docInfo.length();i<36;i++)
+                                    docInfo+='0';
+                                docInfo+=rsGetDocInfo.getString("title");
+                                for(int i=docInfo.length();i<66;i++)
+                                    docInfo+='0';
+                                docInfo+=rsGetDocInfo.getInt("ownerid");
+                                for(int i=docInfo.length();i<BUFFER_SIZE;i++)
+                                    docInfo+='0';
+                                send(docInfo.getBytes(), BUFFER_SIZE);
+                                break;
+                            case "GNI"://获取noteID的信息
+                                int noteID;
+                                String nID="";
+                                for(int i=4;i<BUFFER_SIZE;i++){
+                                    if(buf[i]!=0)
+                                        nID+=buf[i];
+                                    else
+                                        break;
+                                }
+                                noteID=Integer.valueOf(nID);
+                                ResultSet rsGetNoteInfo;
+                                rsGetNoteInfo=DatabaseHelper.getInstance().getFollow(noteID, 2);
+                                String noteInfo="GDI0";
+                                noteInfo+=rsGetNoteInfo.getInt("id");
+                                for(int i=noteInfo.length();i<36;i++)
+                                    noteInfo+='0';
+                                noteInfo+=rsGetNoteInfo.getInt("docid");
+                                for(int i=noteInfo.length();i<66;i++)
+                                    noteInfo+='0';
+                                noteInfo+=rsGetNoteInfo.getInt("ownerid");
+                                for(int i=noteInfo.length();i<BUFFER_SIZE;i++)
+                                    noteInfo+='0';
+                                send(noteInfo.getBytes(), BUFFER_SIZE);
+                                break;
                             case "SGI"://登录
-                                userName = "";
+                                String userNameSignIn="", passwordSignIn="";
                                 for (int i = 4; i < 36; i++) {//用户名，最多32个字节
                                     if (buf[i] != 0)
-                                        userName += buf[i];
+                                        userNameSignIn += buf[i];
                                     else
                                         break;
                                 }
-                                password = "";
                                 for (int i = 36; i < 66; i++) {//email，最多32个字节
                                     if (buf[i] != 0)
-                                        password += buf[i];
+                                        passwordSignIn += buf[i];
                                     else
                                         break;
                                 }
-                                rs = DatabaseHelper.getInstance().checkLogin(userName, password);
-                                if (rs == null)
+                                ResultSet rsSignIn;
+                                rsSignIn = DatabaseHelper.getInstance().checkLogin(userNameSignIn, passwordSignIn);
+                                if (rsSignIn == null)
                                     send(new String("SIF").getBytes(), 3);
                                 else {
-                                    id = rs.getInt("id");
+                                    id = rsSignIn.getInt("id");
                                     send(new String("SIS").getBytes(), 3);
                                 }
                                 break;
@@ -218,10 +298,34 @@ public class TServerProcessor implements Runnable {
                                 DatabaseHelper.getInstance().follow(id,nid2,2);
                                 break;
                             case "SHA":
-
+                                int shareAllID;
+                                short shareAllType;
+                                String said="", sat="";
+                                sat+=buf[3];
+                                shareAllType=Short.valueOf(sat);
+                                for (int i = 4; i < buf.length; i++) {
+                                    if (buf[i] != 0)
+                                        said += buf[i];
+                                    else
+                                        break;
+                                }
+                                shareAllID = Integer.valueOf(said);
+                                DatabaseHelper.getInstance().createShare(id, shareAllType, shareAllID, 0);//0 for all
                                 break;
-                            case "SHP":
-
+                            case "SHF":
+                                int shareFollowingID;
+                                short shareFollowingType;
+                                String sfid="", sft="";
+                                sft+=buf[3];
+                                shareFollowingType=Short.valueOf(sft);
+                                for (int i = 4; i < buf.length; i++) {
+                                    if (buf[i] != 0)
+                                        sfid += buf[i];
+                                    else
+                                        break;
+                                }
+                                shareFollowingID = Integer.valueOf(sfid);
+                                DatabaseHelper.getInstance().createShare(id, shareFollowingType, shareFollowingID, 1);//1 for following
                                 break;
                         }
                     }else {
