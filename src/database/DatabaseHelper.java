@@ -37,15 +37,7 @@ public class DatabaseHelper {
      * @return
      */
     public ResultSet getFollow(int id, int type){
-        ResultSet rs=jdbch.executeQuery(concat_s("*","uf"+String.valueOf(id),"type="+String.valueOf(type)));
-        try {
-            if(rs.next()){
-                return rs;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return jdbch.executeQuery(concat_s("*","uf"+String.valueOf(id),"type="+String.valueOf(type)));
     }
 
     /**
@@ -81,15 +73,7 @@ public class DatabaseHelper {
      */
     public ResultSet searchDoc(String str){
         String sql="title like\'"+str+"\'";
-        ResultSet rs=jdbch.executeQuery(concat_s("*","document",sql));
-        try {
-            if(rs.next()) {
-                return rs;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return jdbch.executeQuery(concat_s("*","document",sql));
     }
 
     public String getDocPath(int id){
@@ -126,6 +110,39 @@ public class DatabaseHelper {
         String sql=String.valueOf(docid)+","+String.valueOf(ownerid)+",\'"+filePath+"\'";
         jdbch.executeUpdate(concat_i("note","docid,ownerid,filepath",sql));
         return true;
+    }
+
+    public ResultSet getUserInfo(int id){
+        ResultSet rs=jdbch.executeQuery(concat_s("*","user","id="+String.valueOf(id)));
+        try {
+            if(rs.next())
+                return rs;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public ResultSet getDocInfo(int id){
+        ResultSet rs=jdbch.executeQuery(concat_s("*","document","id="+String.valueOf(id)));
+        try {
+            if(rs.next())
+                return rs;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public ResultSet getNoteInfo(int id){
+        ResultSet rs=jdbch.executeQuery(concat_s("*","note","id="+String.valueOf(id)));
+        try {
+            if(rs.next())
+                return rs;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /**
